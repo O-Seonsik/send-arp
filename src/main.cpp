@@ -18,49 +18,6 @@ void usage() {
 	printf("sample: send-arp-test wlan0\n");
 }
 
-void changeType2Int(char* ip, u_int8_t* intIP){
-    int j = 0;
-    intIP[0] = 0;
-    for(int i = 0; i < 15; i++){
-        if(ip[i] == '\0') break;
-        if(ip[i] == '.') {
-            j++;
-            intIP[j] = 0;
-            continue;
-        }
-
-       intIP[j] *= 10;
-       intIP[j] += ip[i] - '0';
-    }
-}
-
-char changeHex(int num){
-    if(num < 10) return num + '0';
-    else return num - 10 + 'a';
-}
-
-void changeHex2String(u_int8_t* intMAC, char* strMAC){
-    for(int i = 3; i <= 15; i+=3) strMAC[i-1] = ':';
-    for(int i = 0; i < 6; i++){
-        strMAC[i*3] = changeHex(intMAC[i] / 16);
-        strMAC[i*3+1] = changeHex(intMAC[i] % 16);
-    }
-}
-
-void getMAC(char* interface, char* myMAC){
-  struct ifreq s;
-  int fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
-
-  strcpy(s.ifr_name, interface);
-  if (0 == ioctl(fd, SIOCGIFHWADDR, &s)) {
-      for(int i = 3; i <= 15; i+=3) myMAC[i-1] = ':';
-      for(int i = 0; i < 6; i++){
-          myMAC[i*3] = changeHex((unsigned char)s.ifr_addr.sa_data[i] / 16);
-          myMAC[i*3+1] = changeHex((unsigned char)s.ifr_addr.sa_data[i] % 16);
-      }
-  }
-}
-
 void sendARP(pcap_t* handle, char* senderIP, char* targetIP, char* senderMAC, char* myMAC){
     EthArpPacket packet;
 
@@ -124,7 +81,6 @@ void getSenderMAC(pcap_t* handle, u_int8_t* senderIP, u_int8_t* senderEther, cha
         ip_header ip = getIp(packet);
 
         if(!(ether.type[0] == 0x08 && ether.type[1] == 0x06)) continue;
-        printf("%d.%d.%d.%d\n%d.%d.%d.%d\n", ip.sender[0], ip.sender[1], ip.sender[2], ip.sender[3], senderIP[0], senderIP[1], senderIP[2], senderIP[3]);
         int i;
         for(i = 0; i < 4; i++)
             if(ip.sender[i] != senderIP[i]) break;
@@ -162,10 +118,9 @@ int main(int argc, char* argv[]) {
     char strEth[18];
     strEth[17] = '\0';
     changeHex2String(senderEth, strEth);
-    printf("%s\n", strEth);
-
-    printf("%s\n", myMAC);
     sendARP(handle, argv[2], argv[3], strEth, myMAC);
+
+    printf("Finished send ARP packet!\n");
 
     pcap_close(handle);
 }
